@@ -4,3 +4,4 @@
 frontend/node_modules/
 frontend/dist/
 backend/cs-pulse-api
+backend/cmd/server/main

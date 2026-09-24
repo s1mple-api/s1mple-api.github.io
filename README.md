@@ -4,6 +4,8 @@
 
 GitHub Pages 部署仓库：[`s1mple-api.github.io`](https://github.com/s1mple-api/s1mple-api.github.io)。Pages 只托管前端；Gin 和 MySQL 需要部署在独立服务上。
 
+部署前端时，Pages workflow 默认将 API 请求发送到 `https://47.111.131.153:8080`。后端需在该地址提供有效 HTTPS 证书，并将 `CORS_ORIGIN` 设置为 `https://s1mple-api.github.io`。若改用其他 API 地址，可在仓库的 Settings → Secrets and variables → Actions 中添加仓库变量 `VITE_API_BASE_URL` 覆盖默认值。
+
 ## 功能
 
 - Steam `appid=730` 官方新闻每 15 分钟同步到 MySQL
