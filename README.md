@@ -2,9 +2,9 @@
 
 面向个人学习的全球新闻、热搜与 CS2 中文资讯站。前端使用 React + Vite，后端使用 Gin，数据存入 MySQL。
 
-源码仓库：[`s1mple-api.github.io`](https://github.com/s1mple-api/s1mple-api.github.io)。生产环境部署在阿里云：Nginx 监听 `8848` 端口提供前端静态文件，Gin 后端监听 `80` 端口。前端生产构建的 API 地址为 `http://47.111.131.153:80`。示例 Nginx 配置见 `deploy/nginx/life.conf`。
+源码仓库：[`s1mple-api.github.io`](https://github.com/s1mple-api/s1mple-api.github.io)。生产环境部署在阿里云：Nginx 监听 `8848` 端口提供前端静态文件，Gin 后端监听 `8080` 端口。前端生产构建的 API 地址为 `http://47.111.131.153:8080`。示例 Nginx 配置见 `deploy/nginx/life.conf`。
 
-部署前端：在 `frontend` 目录运行 `npm ci && npm run build`，再把 `frontend/dist` 内容放到 Nginx 配置的站点目录。后端启动时设置 `APP_PORT=80`、`MYSQL_DSN` 和 `CORS_ORIGIN=http://47.111.131.153:8848`。由于前后端端口不同，Gin 需要允许该前端源的跨域请求；阿里云安全组需开放 TCP `80` 和 `8848`。请勿把真实数据库口令提交到仓库。
+部署前端：在 `frontend` 目录运行 `npm ci && npm run build`，再把 `frontend/dist` 内容放到 Nginx 配置的站点目录。后端启动时设置 `APP_PORT=8080`、`MYSQL_DSN` 和 `CORS_ORIGIN=http://47.111.131.153:8848`。由于前后端端口不同，Gin 需要允许该前端源的跨域请求；阿里云安全组需开放 TCP `8080` 和 `8848`。请勿把真实数据库口令提交到仓库。
 
 ## 功能
 
