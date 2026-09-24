@@ -2,9 +2,9 @@
 
 面向个人学习的全球新闻、热搜与 CS2 中文资讯站。前端使用 React + Vite，后端使用 Gin，数据存入 MySQL。
 
-GitHub Pages 部署仓库：[`s1mple-api.github.io`](https://github.com/s1mple-api/s1mple-api.github.io)。Pages 只托管前端；Gin 和 MySQL 需要部署在独立服务上。
+源码仓库：[`s1mple-api.github.io`](https://github.com/s1mple-api/s1mple-api.github.io)。生产环境部署在阿里云：Nginx 监听 `8848` 端口提供前端静态文件，Gin 后端监听 `80` 端口。前端生产构建的 API 地址为 `http://47.111.131.153:80`。示例 Nginx 配置见 `deploy/nginx/life.conf`。
 
-部署前端时，Pages workflow 默认将 API 请求发送到 `https://47.111.131.153:8080`。后端需在该地址提供有效 HTTPS 证书，并将 `CORS_ORIGIN` 设置为 `https://s1mple-api.github.io`。若改用其他 API 地址，可在仓库的 Settings → Secrets and variables → Actions 中添加仓库变量 `VITE_API_BASE_URL` 覆盖默认值。
+部署前端：在 `frontend` 目录运行 `npm ci && npm run build`，再把 `frontend/dist` 内容放到 Nginx 配置的站点目录。后端启动时设置 `APP_PORT=80`、`MYSQL_DSN` 和 `CORS_ORIGIN=http://47.111.131.153:8848`。由于前后端端口不同，Gin 需要允许该前端源的跨域请求；阿里云安全组需开放 TCP `80` 和 `8848`。请勿把真实数据库口令提交到仓库。
 
 ## 功能
 
