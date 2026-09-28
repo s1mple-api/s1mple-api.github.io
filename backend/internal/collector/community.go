@@ -281,11 +281,17 @@ func contentBlocks(fragment string) []model.ContentBlock {
 				return
 			case "img":
 				flush()
-				for _, attr := range n.Attr {
-					if attr.Key == "src" {
-						if imageURL := publicMediaURL(attr.Val); imageURL != "" {
-							blocks = append(blocks, model.ContentBlock{Type: "image", URL: imageURL})
+				for _, key := range []string{"data-original", "data-src", "data-url", "src"} {
+					found := false
+					for _, attr := range n.Attr {
+						if attr.Key == key {
+							if imageURL := CommunityImageURL(attr.Val); imageURL != "" {
+								blocks = append(blocks, model.ContentBlock{Type: "image", URL: imageURL})
+								found = true
+							}
 						}
+					}
+					if found {
 						break
 					}
 				}

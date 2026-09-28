@@ -11,6 +11,7 @@ import (
 
 	"github.com/example/cs-pulse/backend/internal/collector"
 	"github.com/example/cs-pulse/backend/internal/config"
+	"github.com/example/cs-pulse/backend/internal/mediacrawler"
 	"github.com/example/cs-pulse/backend/internal/model"
 	"github.com/example/cs-pulse/backend/internal/repository"
 )
@@ -36,6 +37,7 @@ type SyncService struct {
 	periodFetchMu  sync.Mutex
 	communityMu    sync.Mutex
 	community      *collector.CommunityCollector
+	crawler        *mediacrawler.Runner
 	communityLocks sync.Map
 	statusMu       sync.RWMutex
 	sourceStatus   map[string]SourceStatus
@@ -51,7 +53,7 @@ type SourceStatus struct {
 }
 
 func NewSyncService(repo *repository.Repository, cfg config.Config) *SyncService {
-	return &SyncService{repo: repo, cfg: cfg, steam: collector.NewSteamNewsCollector(), bbc: collector.NewBBCCollector(), trends: collector.NewTrendCollector(), community: collector.NewCommunityCollector(cfg.CollectorUserAgent), hltv: collector.NewHLTVCollector(cfg.CollectorUserAgent), valve: collector.NewValveRankingsCollector(cfg.CollectorUserAgent), translation: newTranslator(cfg.TranslationURL), sourceStatus: make(map[string]SourceStatus), articleWork: make(map[uint]bool), articleRetry: make(map[uint]time.Time)}
+	return &SyncService{repo: repo, cfg: cfg, crawler: mediacrawler.NewRunner(cfg), steam: collector.NewSteamNewsCollector(), bbc: collector.NewBBCCollector(), trends: collector.NewTrendCollector(), community: collector.NewCommunityCollector(cfg.CollectorUserAgent), hltv: collector.NewHLTVCollector(cfg.CollectorUserAgent), valve: collector.NewValveRankingsCollector(cfg.CollectorUserAgent), translation: newTranslator(cfg.TranslationURL), sourceStatus: make(map[string]SourceStatus), articleWork: make(map[uint]bool), articleRetry: make(map[uint]time.Time)}
 }
 
 func (s *SyncService) SourceStatus() map[string]SourceStatus {

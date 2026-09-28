@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/example/cs-pulse/backend/internal/collector"
 	"github.com/example/cs-pulse/backend/internal/config"
 	"github.com/example/cs-pulse/backend/internal/model"
 	"github.com/example/cs-pulse/backend/internal/repository"
@@ -32,6 +33,21 @@ func NewRouter(repo *repository.Repository, syncer *service.SyncService, cfg con
 	r.Use(cors.New(cors.Config{AllowOrigins: []string{cfg.CORSOrigin}, AllowMethods: []string{"GET", "POST"}, AllowHeaders: []string{"Content-Type"}}))
 	r.GET("/healthz", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
 	api := r.Group("/api/v1")
+	api.GET("/community/images", func(c *gin.Context) {
+		raw := c.Query("url")
+		if collector.CommunityImageURL(raw) == "" {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		body, contentType, err := collector.FetchCommunityImage(raw)
+		if err != nil {
+			c.Status(http.StatusBadGateway)
+			return
+		}
+		c.Header("Cache-Control", "public, max-age=3600")
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Data(http.StatusOK, contentType, body)
+	})
 	api.GET("/dashboard", func(c *gin.Context) {
 		articles, err := repo.LatestTranslatedArticles(48)
 		if err != nil {
@@ -137,7 +153,7 @@ func NewRouter(repo *repository.Repository, syncer *service.SyncService, cfg con
 		if !ok {
 			return
 		}
-		data, err := syncer.CommunityTopicPosts(key, page)
+		data, err := syncer.CommunityTopicPosts(key, page, c.Query("refresh") == "1")
 		respondCommunity(c, data, err)
 	})
 	api.GET("/community/posts/:key", func(c *gin.Context) {

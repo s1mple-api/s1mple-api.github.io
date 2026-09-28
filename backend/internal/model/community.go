@@ -7,7 +7,7 @@ import (
 )
 
 func CommunitySources() []string {
-	return []string{"tieba", "hupu", "bilibili", "xiaohongshu", "douyin"}
+	return []string{"tieba", "hupu", "xiaohongshu"}
 }
 
 func IsCommunitySource(source string) bool {

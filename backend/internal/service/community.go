@@ -51,7 +51,7 @@ func communityStatus(source string, err error) model.CommunityState {
 	return status
 }
 
-func (s *SyncService) CommunityTopicPosts(key string, page int) (model.CommunityPostList, error) {
+func (s *SyncService) CommunityTopicPosts(key string, page int, refresh bool) (model.CommunityPostList, error) {
 	topic, err := s.repo.CommunityResource(key, "topic")
 	if err != nil {
 		return model.CommunityPostList{}, err
@@ -64,13 +64,43 @@ func (s *SyncService) CommunityTopicPosts(key string, page int) (model.Community
 	if err != nil {
 		return previous, err
 	}
-	if fresh {
+	if fresh && !refresh && !(s.crawler.Enabled(topic.Source) && previous.Status.State == "unavailable") {
 		previous.Topic = topic
 		previous.Status.Cached = true
 		return previous, nil
 	}
-	result, fetchErr := s.community.TopicPosts(topic, page)
+	var result model.CommunityPostList
+	var fetchErr error
+	usedBrowser := false
+	if topic.Source == "xiaohongshu" && s.crawler.Enabled(topic.Source) {
+		usedBrowser = true
+	} else {
+		result, fetchErr = s.community.TopicPosts(topic, page)
+		usedBrowser = fetchErr != nil && s.crawler.Enabled(topic.Source)
+	}
+	if usedBrowser {
+		var comments map[string]model.CommunityComments
+		result, comments, fetchErr = s.crawler.Fetch(topic, page)
+		if fetchErr == nil {
+			if len(result.Posts) > 0 {
+				if err := s.repo.SaveCommunitySnapshot(result, comments, time.Hour); err != nil {
+					return result, err
+				}
+			} else {
+				_ = s.repo.SaveCommunityCache(cacheKey, topic.Source, result, 5*time.Minute)
+			}
+			return result, nil
+		}
+	}
+	result.Topic = topic
+	result.Page = page
+	if result.Posts == nil {
+		result.Posts = []model.CommunityPost{}
+	}
 	result.Status = communityStatus(topic.Source, fetchErr)
+	if usedBrowser && fetchErr != nil {
+		result.Status.Message = fetchErr.Error()
+	}
 	if fetchErr != nil && found && len(previous.Posts) > 0 {
 		result = previous
 		result.Topic = topic
@@ -120,10 +150,14 @@ func (s *SyncService) CommunityPostDetails(key string) (model.CommunityPostDetai
 		if resource.DataJSON != "" {
 			_ = json.Unmarshal([]byte(resource.DataJSON), &post)
 		}
-		post.Body = []model.ContentBlock{}
 		post.Title, post.Summary, post.Source, post.SourceURL, post.Key = resource.Title, resource.Summary, resource.Source, resource.SourceURL, resource.Key
 	}
 	result := model.CommunityPostDetail{Post: post, Status: communityStatus(resource.Source, fetchErr)}
+	if fetchErr != nil && len(post.Body) > 0 {
+		result.Status.State = "stale"
+		result.Status.Message = "来源暂时无法更新，当前展示已获取的正文。"
+		result.Status.Cached = true
+	}
 	if fetchErr != nil && found && (len(previous.Post.Body) > 0 || previous.Post.VideoID != "") {
 		result = previous
 		result.Status.State = "stale"
@@ -161,6 +195,7 @@ func (s *SyncService) CommunityPostComments(key string, page int, sort string) (
 	var fetchErr error
 	if detail.Status.State == "unavailable" {
 		result = model.CommunityComments{Comments: []model.CommunityComment{}, Page: page, Sort: sort, Status: detail.Status}
+		fetchErr = fmt.Errorf("%s", detail.Status.Message)
 	} else {
 		result, fetchErr = s.community.Comments(detail.Post, page, sort)
 		result.Status = communityStatus(resource.Source, fetchErr)

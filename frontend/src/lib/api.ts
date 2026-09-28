@@ -82,12 +82,12 @@ export type Event = {
 }
 export type SourceStatus = { state: string; error?: string; count: number; lastAttempt: string; lastSuccess?: string; retryAfter?: string }
 export type Trend = { id: number; source: 'baidu' | 'weibo'; provider: string; rank: number; keyword: string; heat: number; tag: string; sourceUrl: string; fetchedAt: string }
-export type CommunitySource = 'tieba' | 'hupu' | 'bilibili' | 'xiaohongshu' | 'douyin'
+export type CommunitySource = 'tieba' | 'hupu' | 'xiaohongshu'
 export type CommunityTopic = Omit<Trend, 'source'> & { key: string; source: CommunitySource; summary: string; heatLabel: string; section: string; sectionLabel: string }
 export type CommunityTopics = Partial<Record<CommunitySource, CommunityTopic[]>>
 export type ContentBlock = { type: 'text' | 'image'; text?: string; url?: string }
 export type CommunityState = { state: 'ready' | 'unavailable' | 'stale'; message?: string; fetchedAt: string; cached: boolean }
-export type CommunityPost = { key: string; source: CommunitySource; sourceUrl: string; title: string; summary: string; author: string; avatarUrl: string; coverUrl: string; publishedAt?: string; views: number; likes: number; commentCount: number; videoId?: string; body: ContentBlock[] }
+export type CommunityPost = { key: string; source: CommunitySource; sourceUrl: string; title: string; summary: string; author: string; avatarUrl: string; coverUrl: string; publishedAt?: string; views: number; likes: number; commentCount: number; body: ContentBlock[] }
 export type CommunityComment = { id: string; author: string; avatarUrl: string; publishedAt?: string; likes: number; replyCount: number; body: ContentBlock[]; replies: CommunityComment[]; quote?: CommunityComment }
 export type CommunityPostList = { topic: { key: string; title: string; summary: string; source: CommunitySource; sourceUrl: string; heatLabel: string; fetchedAt: string }; posts: CommunityPost[]; page: number; hasMore: boolean; status: CommunityState }
 export type CommunityPostDetail = { post: CommunityPost; status: CommunityState }
@@ -96,6 +96,7 @@ export type Dashboard = { articles: Article[]; worldArticles: Article[]; newsFee
 export type SearchResults = { articles: Article[]; players: Player[] }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+export const communityImageURL = (url: string) => `${API_BASE_URL}/api/v1/community/images?url=${encodeURIComponent(url)}`
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${url}`, init)
@@ -105,7 +106,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const getDashboard = () => request<Dashboard>('/api/v1/dashboard')
 export const getArticle = (id: number) => request<Article>(`/api/v1/articles/${id}`)
-export const getCommunityTopic = (key: string, page = 1) => request<CommunityPostList>(`/api/v1/community/topics/${key}?page=${page}`)
+export const getCommunityTopic = (key: string, page = 1, refresh = false) => request<CommunityPostList>(`/api/v1/community/topics/${key}?page=${page}${refresh ? '&refresh=1' : ''}`)
 export const getCommunityPost = (key: string) => request<CommunityPostDetail>(`/api/v1/community/posts/${key}`)
 export const getCommunityComments = (key: string, page = 1, sort = 'hot') => request<CommunityComments>(`/api/v1/community/posts/${key}/comments?page=${page}&sort=${sort}`)
 

@@ -3,9 +3,7 @@ import type { CommunitySource } from './api'
 export const communityPlatforms: { source: CommunitySource; name: string; description: string }[] = [
   { source: 'tieba', name: '百度贴吧', description: '热门话题 · 公开摘要' },
   { source: 'hupu', name: '虎扑', description: '热搜话题 · 讨论入口' },
-  { source: 'bilibili', name: 'B 站', description: '热门视频 · UP 主动态' },
   { source: 'xiaohongshu', name: '小红书', description: '热搜话题 · 笔记动态' },
-  { source: 'douyin', name: '抖音', description: '热门话题 · 视频动态' },
 ]
 
 // Match backend/model.CommunityKey so older dashboard responses that predate

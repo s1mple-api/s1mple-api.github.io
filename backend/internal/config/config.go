@@ -9,6 +9,10 @@ type Config struct {
 	CollectorUserAgent  string
 	EnableHLTVCollector bool
 	TranslationURL      string
+	MediaCrawlerHome    string
+	MediaCrawlerPython  string
+	MediaCrawlerBridge  string
+	MediaCrawlerCDP     string
 }
 
 func Load() Config {
@@ -19,6 +23,10 @@ func Load() Config {
 		CollectorUserAgent:  env("COLLECTOR_USER_AGENT", "CSPulseLearning/0.1 (local learning project)"),
 		EnableHLTVCollector: env("ENABLE_HLTV_COLLECTOR", "true") == "true",
 		TranslationURL:      env("TRANSLATION_URL", ""),
+		MediaCrawlerHome:    env("MEDIACRAWLER_HOME", ""),
+		MediaCrawlerPython:  env("MEDIACRAWLER_PYTHON", ""),
+		MediaCrawlerBridge:  env("MEDIACRAWLER_BRIDGE", ""),
+		MediaCrawlerCDP:     env("MEDIACRAWLER_CDP", "ws://127.0.0.1:9222/devtools/browser"),
 	}
 }
 

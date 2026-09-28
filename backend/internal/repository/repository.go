@@ -207,7 +207,13 @@ func (r *Repository) ReplaceTrends(source string, rows []model.Trend) error {
 				return err
 			}
 		}
-		if err := tx.Where("source = ?", source).Delete(&model.Trend{}).Error; err != nil {
+		deleteTrends := tx.Where("source = ?", source)
+		if model.IsCommunitySource(source) {
+			// Keep locally imported MediaCrawler topics alongside periodically
+			// refreshed public hotboards.
+			deleteTrends = deleteTrends.Where("provider IS NULL OR provider <> ?", "MediaCrawler")
+		}
+		if err := deleteTrends.Delete(&model.Trend{}).Error; err != nil {
 			return err
 		}
 		return tx.Create(&rows).Error
