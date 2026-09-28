@@ -21,21 +21,24 @@ var (
 )
 
 type SyncService struct {
-	repo          *repository.Repository
-	cfg           config.Config
-	steam         *collector.SteamNewsCollector
-	bbc           *collector.BBCCollector
-	trends        *collector.TrendCollector
-	hltv          *collector.HLTVCollector
-	valve         *collector.ValveRankingsCollector
-	translation   *translator
-	translationMu sync.Mutex
-	articleMu     sync.Mutex
-	articleWork   map[uint]bool
-	articleRetry  map[uint]time.Time
-	periodFetchMu sync.Mutex
-	statusMu      sync.RWMutex
-	sourceStatus  map[string]SourceStatus
+	repo           *repository.Repository
+	cfg            config.Config
+	steam          *collector.SteamNewsCollector
+	bbc            *collector.BBCCollector
+	trends         *collector.TrendCollector
+	hltv           *collector.HLTVCollector
+	valve          *collector.ValveRankingsCollector
+	translation    *translator
+	translationMu  sync.Mutex
+	articleMu      sync.Mutex
+	articleWork    map[uint]bool
+	articleRetry   map[uint]time.Time
+	periodFetchMu  sync.Mutex
+	communityMu    sync.Mutex
+	community      *collector.CommunityCollector
+	communityLocks sync.Map
+	statusMu       sync.RWMutex
+	sourceStatus   map[string]SourceStatus
 }
 
 type SourceStatus struct {
@@ -48,7 +51,7 @@ type SourceStatus struct {
 }
 
 func NewSyncService(repo *repository.Repository, cfg config.Config) *SyncService {
-	return &SyncService{repo: repo, cfg: cfg, steam: collector.NewSteamNewsCollector(), bbc: collector.NewBBCCollector(), trends: collector.NewTrendCollector(), hltv: collector.NewHLTVCollector(cfg.CollectorUserAgent), valve: collector.NewValveRankingsCollector(cfg.CollectorUserAgent), translation: newTranslator(cfg.TranslationURL), sourceStatus: make(map[string]SourceStatus), articleWork: make(map[uint]bool), articleRetry: make(map[uint]time.Time)}
+	return &SyncService{repo: repo, cfg: cfg, steam: collector.NewSteamNewsCollector(), bbc: collector.NewBBCCollector(), trends: collector.NewTrendCollector(), community: collector.NewCommunityCollector(cfg.CollectorUserAgent), hltv: collector.NewHLTVCollector(cfg.CollectorUserAgent), valve: collector.NewValveRankingsCollector(cfg.CollectorUserAgent), translation: newTranslator(cfg.TranslationURL), sourceStatus: make(map[string]SourceStatus), articleWork: make(map[uint]bool), articleRetry: make(map[uint]time.Time)}
 }
 
 func (s *SyncService) SourceStatus() map[string]SourceStatus {
@@ -101,6 +104,7 @@ func (s *SyncService) SyncOnce() {
 	s.syncBBC()
 	s.syncBaiduTrends()
 	s.syncWeiboTrends()
+	s.syncCommunityTopics()
 	s.syncValveRankings()
 	if s.cfg.EnableHLTVCollector {
 		s.syncHLTV()
@@ -363,6 +367,29 @@ func (s *SyncService) syncWeiboTrends() {
 	s.recordSourceStatus("weiboTrends", len(rows), err)
 }
 
+func (s *SyncService) syncCommunityTopics() {
+	if !s.communityMu.TryLock() {
+		return
+	}
+	defer s.communityMu.Unlock()
+	for _, source := range model.CommunitySources() {
+		key := source + "Topics"
+		if !s.sourceCanBeRetried(key) {
+			continue
+		}
+		rows, err := s.trends.FetchCommunity(source)
+		if err == nil {
+			err = s.repo.ReplaceTrends(source, rows)
+		}
+		if err != nil {
+			log.Printf("%s community sync: %v", source, err)
+		} else {
+			log.Printf("%s community updated: %d topics", source, len(rows))
+		}
+		s.recordSourceStatus(key, len(rows), err)
+	}
+}
+
 func (s *SyncService) syncHLTV() {
 	if s.sourceCanBeRetried("news") {
 		if articles, err := s.hltv.FetchLatestNews(); err != nil {
@@ -555,6 +582,7 @@ func (s *SyncService) Run() {
 		case <-trendsTicker.C:
 			s.syncBaiduTrends()
 			s.syncWeiboTrends()
+			s.syncCommunityTopics()
 		case <-hltvTicker.C:
 			if s.cfg.EnableHLTVCollector {
 				s.syncHLTV()

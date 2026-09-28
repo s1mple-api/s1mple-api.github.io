@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { getArticle, getDashboard, getEvents, getPlayer, getPlayers, getRankings, recordArticleRead, search, type Article, type Dashboard, type Event, type Player, type SearchResults, type SourceStatus, type Team, type Trend } from './lib/api'
 import { NewsHome, NewsCollection } from './components/NewsHome'
+import { CommunityPage, CommunityPreview } from './components/CommunityPage'
+import { CommunityPostPage, CommunityTopicPage } from './components/CommunityDetail'
+import { communityResourceKey } from './lib/community'
 
-type Tab = 'news' | 'world' | 'cs2' | 'trending' | 'events' | 'teams' | 'players'
+type Tab = 'news' | 'world' | 'cs2' | 'trending' | 'community' | 'events' | 'teams' | 'players'
 const dateTime = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 const fullDate = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
 const eventDate = new Intl.DateTimeFormat('zh-CN', { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric' })
@@ -12,6 +15,7 @@ const tabs: { key: Tab; label: string }[] = [
   { key: 'world', label: '世界新闻' },
   { key: 'cs2', label: 'CS2 新闻' },
   { key: 'trending', label: '热搜榜' },
+  { key: 'community', label: '社区热议' },
   { key: 'events', label: '赛事数据' },
   { key: 'teams', label: '战队排名' },
   { key: 'players', label: '选手数据' },
@@ -134,6 +138,11 @@ export default function App() {
   }
 
   const newsFeed = data?.newsFeed ?? []
+  const newsSections = data?.newsSections ?? []
+  const communityProps = { topics: data?.communityTopics ?? { tieba: data?.tiebaTopics ?? [], hupu: data?.hupuTopics ?? [] }, sourceStatus: data?.sourceStatus, loading: !data }
+  const topicKey = route.match(/^\/topic\/([a-f0-9]{24})$/)?.[1]
+  const postRoute = route.match(/^(?:\/topic\/([a-f0-9]{24}))?\/post\/([a-f0-9]{24})$/)
+  const isCommunityDetail = Boolean(topicKey || postRoute)
   const baiduTrends = data?.baiduTrends ?? []
   const weiboTrends = data?.weiboTrends ?? []
   const events = data?.events ?? noEvents
@@ -161,22 +170,33 @@ export default function App() {
     </header>
 
     <nav className="main-nav" aria-label="内容分类"><div className="page-width" role="tablist" aria-label="LIFE TV 栏目">
-      {tabs.map((item) => <button key={item.key} role="tab" aria-selected={!isArticle && !isPlayer && tab === item.key} className={(!isArticle && !isPlayer && tab === item.key) ? 'active' : ''} onClick={() => selectTab(item.key)}>{item.label}</button>)}
+      {tabs.map((item) => <button key={item.key} role="tab" aria-selected={!isArticle && !isPlayer && !isCommunityDetail && tab === item.key} className={(!isArticle && !isPlayer && !isCommunityDetail && tab === item.key) ? 'active' : ''} onClick={() => selectTab(item.key)}>{item.label}</button>)}
     </div></nav>
 
     <main className="page-width content">
       {error && <div className="error-message" role="alert">{error}</div>}
-      {isArticle ? <ArticlePage article={activeArticle} loading={detailLoading} backLabel={tabs.find((item) => item.key === lastTab)?.label || '内容'} onBack={backToContent} /> : isPlayer ? <PlayerPage player={activePlayer} loading={detailLoading} backLabel={tabs.find((item) => item.key === lastTab)?.label || '内容'} onBack={backToContent} /> : <>
+      {topicKey ? <CommunityTopicPage key={topicKey} topicKey={topicKey} onBack={() => selectTab('community')} onPost={async (post) => {
+        try {
+          const key = /^[a-f0-9]{24}$/i.test(post.key) ? post.key : await communityResourceKey(post.source, `post:${post.sourceUrl}`)
+          navigate(`/topic/${topicKey}/post/${key}`)
+        } catch (reason) { setError(reason instanceof Error ? reason.message : '无法打开这篇帖子。') }
+      }} /> : postRoute ? <CommunityPostPage key={postRoute[2]} postKey={postRoute[2]} onBack={() => postRoute[1] ? navigate(`/topic/${postRoute[1]}`) : selectTab('community')} /> : isArticle ? <ArticlePage article={activeArticle} loading={detailLoading} backLabel={tabs.find((item) => item.key === lastTab)?.label || '内容'} onBack={backToContent} /> : isPlayer ? <PlayerPage player={activePlayer} loading={detailLoading} backLabel={tabs.find((item) => item.key === lastTab)?.label || '内容'} onBack={backToContent} /> : <>
         <div className="page-intro"><div><span className="red-line" /><h1>{tab === 'news' ? '今日要闻' : tabs.find((item) => item.key === tab)?.label}</h1></div><p>世界动态、热搜话题与 CS2 赛场，一站阅读。</p></div>
-        {tab === 'news' && <NewsHome stories={newsFeed} loading={!data} onArticle={openArticle} sourceStatus={data?.sourceStatus} hotPanel={<HotPanel baiduTrends={baiduTrends} weiboTrends={weiboTrends} sourceStatus={data?.sourceStatus} loading={!data} compact />} />}
-        {(tab === 'world' || tab === 'cs2') && <NewsCollection stories={newsFeed} category={tab} loading={!data} onArticle={openArticle} />}
+        {tab === 'news' && <NewsHome stories={newsFeed} sections={newsSections} loading={!data} onArticle={openArticle} sourceStatus={data?.sourceStatus} hotPanel={<HotPanel baiduTrends={baiduTrends} weiboTrends={weiboTrends} sourceStatus={data?.sourceStatus} loading={!data} compact />} communityPanel={<CommunityPreview {...communityProps} onOpen={() => selectTab('community')} />} />}
+        {(tab === 'world' || tab === 'cs2') && <NewsCollection stories={newsFeed} sections={newsSections} category={tab} loading={!data} onArticle={openArticle} />}
         {tab === 'trending' && <TrendingPage baiduTrends={baiduTrends} weiboTrends={weiboTrends} sourceStatus={data?.sourceStatus} loading={!data} />}
+        {tab === 'community' && <CommunityPage {...communityProps} sections={data?.communitySections ?? []} onTopic={async (topic) => {
+          try {
+            const key = /^[a-f0-9]{24}$/i.test(topic.key) ? topic.key : await communityResourceKey(topic.source, topic.sourceUrl)
+            navigate(`/topic/${key}`)
+          } catch (reason) { setError(reason instanceof Error ? reason.message : '无法打开这个话题。') }
+        }} />}
         {tab === 'events' && <EventsPage events={events} status={data?.sourceStatus?.events} loading={!data} />}
         {tab === 'teams' && <TeamsPage teams={rankings} valveTeams={valveRankings} hltvStatus={data?.sourceStatus?.rankings} rosterStatus={data?.sourceStatus?.teamRoster} valveStatus={data?.sourceStatus?.valveRankings} loading={!data} />}
         {tab === 'players' && <PlayersPage players={players} status={data?.sourceStatus?.players} loading={!data} onPlayer={openPlayer} />}
       </>}
     </main>
-    <footer className="footer"><div className="page-width"><strong>LIFE TV</strong><span>世界新闻 · 热搜 · CS2 中文资讯</span><button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>返回顶部 ↑</button></div></footer>
+    <footer className="footer"><div className="page-width"><strong>LIFE TV</strong><span>世界新闻 · 社区热点 · CS2 中文资讯</span><button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>返回顶部 ↑</button></div></footer>
   </>
 }
 

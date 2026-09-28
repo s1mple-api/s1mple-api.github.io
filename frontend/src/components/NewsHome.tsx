@@ -1,16 +1,18 @@
 import { useState, type ReactNode } from 'react'
-import type { Article, NewsCategory, RankedArticle, SourceStatus } from '../lib/api'
+import type { Article, ContentSection, NewsCategory, RankedArticle, SourceStatus } from '../lib/api'
 
 const publishedDate = new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 const categoryName = (category: NewsCategory) => category === 'world' ? '世界新闻' : 'CS2'
 const sourceName = (source: string) => source === 'bbc' ? 'BBC News' : source === 'hltv' ? 'HLTV' : 'Steam 官方'
 const titleOf = (article: Article) => article.titleZh || article.title
 
-export function NewsHome({ stories, loading, onArticle, hotPanel, sourceStatus }: {
+export function NewsHome({ stories, sections, loading, onArticle, hotPanel, communityPanel, sourceStatus }: {
   stories: RankedArticle[]
+  sections: ContentSection[]
   loading: boolean
   onArticle: (article: Article) => void
   hotPanel: ReactNode
+  communityPanel: ReactNode
   sourceStatus?: Record<string, SourceStatus>
 }) {
   const lead = stories[0]
@@ -29,7 +31,7 @@ export function NewsHome({ stories, loading, onArticle, hotPanel, sourceStatus }
           <div className="focus-support">{supporting.map((article) => <NewsCard key={article.id} article={article} onClick={() => onArticle(article)} variant="support" />)}</div>
         </div> : <div className="home-empty"><strong>正在整理最新报道</strong><p>新闻同步后会自动显示在这里。</p></div>}
       </section>
-      <NewsFeed stories={stories} loading={loading} onArticle={onArticle} />
+      <NewsFeed stories={stories} sections={sections} loading={loading} onArticle={onArticle} />
       {sourceStatus?.news?.state === 'unavailable' && <p className="news-cache-note">部分 CS2 报道显示最近缓存，发布时间已标注。</p>}
       {sourceStatus?.bbcNews?.state === 'unavailable' && <p className="news-cache-note">世界新闻暂未更新，当前可阅读已同步报道。</p>}
     </div>
@@ -42,30 +44,41 @@ export function NewsHome({ stories, loading, onArticle, hotPanel, sourceStatus }
         <details className="heat-method"><summary>热度如何计算 <span>＋</span></summary><p>LIFE TV 综合指数，范围 0–100。结合新闻时效（最高 55 分）、与百度／微博热搜的主题关联（最高 30 分）和近 7 天本站阅读记录（最高 15 分）。</p><p>时间越久，得分越低。同一会话重复打开同一报道只计一次阅读。首屏兼顾世界新闻与 CS2，热度榜按得分排序。</p></details>
       </section>
       {hotPanel}
+      {communityPanel}
       <div className="edition-note"><span>LIFE TV</span><p>从世界，到赛场。</p><small>重要的动态，在这里相遇。</small></div>
     </aside>
   </div>
 }
 
-export function NewsCollection({ stories, category, loading, onArticle }: { stories: RankedArticle[]; category: NewsCategory; loading: boolean; onArticle: (article: Article) => void }) {
-  return <div className="news-collection"><NewsFeed key={category} stories={stories} loading={loading} onArticle={onArticle} fixedCategory={category} /></div>
+export function NewsCollection({ stories, sections, category, loading, onArticle }: { stories: RankedArticle[]; sections: ContentSection[]; category: NewsCategory; loading: boolean; onArticle: (article: Article) => void }) {
+  return <div className="news-collection"><NewsFeed key={category} stories={stories} sections={sections} loading={loading} onArticle={onArticle} fixedCategory={category} /></div>
 }
 
-function NewsFeed({ stories, loading, onArticle, fixedCategory }: { stories: RankedArticle[]; loading: boolean; onArticle: (article: Article) => void; fixedCategory?: NewsCategory }) {
+function NewsFeed({ stories, sections, loading, onArticle, fixedCategory }: { stories: RankedArticle[]; sections: ContentSection[]; loading: boolean; onArticle: (article: Article) => void; fixedCategory?: NewsCategory }) {
   const [category, setCategory] = useState<NewsCategory | 'all'>(fixedCategory || 'all')
+  const [section, setSection] = useState('all')
   const [sort, setSort] = useState<'heat' | 'latest'>('heat')
   const [visibleCount, setVisibleCount] = useState(12)
-  const filtered = stories.filter((article) => category === 'all' || article.category === category)
+  const categoryStories = stories.filter((article) => category === 'all' || article.category === category)
+  const filtered = categoryStories.filter((article) => section === 'all' || article.section === section)
   const ordered = [...filtered].sort((a, b) => sort === 'heat' ? b.heatScore - a.heatScore || Date.parse(b.publishedAt) - Date.parse(a.publishedAt) : Date.parse(b.publishedAt) - Date.parse(a.publishedAt) || b.id - a.id)
   const filters: { key: NewsCategory | 'all'; label: string }[] = [{ key: 'all', label: '全部' }, { key: 'world', label: '世界新闻' }, { key: 'cs2', label: 'CS2 新闻' }]
 
   return <section className="news-feed" aria-label={fixedCategory ? `${categoryName(fixedCategory)}报道` : '全部报道'}>
     <div className="news-section-heading"><h2>{fixedCategory ? `${categoryName(fixedCategory)}报道` : '全部报道'}<span>THE LATEST</span></h2><span>{filtered.length} 篇报道</span></div>
     <div className="news-feed-controls">
-      {!fixedCategory ? <div className="news-filter-tabs" role="tablist" aria-label="新闻类型">{filters.map((filter) => <button key={filter.key} role="tab" aria-selected={category === filter.key} className={category === filter.key ? 'active' : ''} onClick={() => { setCategory(filter.key); setVisibleCount(12) }}>{filter.label}<span>{filter.key === 'all' ? stories.length : stories.filter((story) => story.category === filter.key).length}</span></button>)}</div> : <p>追踪{fixedCategory === 'world' ? '全球新闻' : '赛场内外'}，站内阅读全文。</p>}
+      {!fixedCategory ? <div className="news-filter-tabs" role="group" aria-label="新闻类型">{filters.map((filter) => <button key={filter.key} aria-pressed={category === filter.key} className={category === filter.key ? 'active' : ''} onClick={() => { setCategory(filter.key); setSection('all'); setVisibleCount(12) }}>{filter.label}<span>{filter.key === 'all' ? stories.length : stories.filter((story) => story.category === filter.key).length}</span></button>)}</div> : <p>追踪{fixedCategory === 'world' ? '全球新闻' : '赛场内外'}，站内阅读全文。</p>}
       <label className="news-sort"><span className="sr-only">新闻排序</span><select aria-label="新闻排序" value={sort} onChange={(event) => { setSort(event.target.value as 'heat' | 'latest'); setVisibleCount(12) }}><option value="heat">综合热度 ↓</option><option value="latest">最新发布 ↓</option></select></label>
     </div>
-    {loading ? <div className="news-skeleton" aria-label="正在加载报道" /> : ordered.length ? <div className="news-feed-grid">{ordered.slice(0, visibleCount).map((article) => <NewsCard article={article} key={article.id} variant="feed" onClick={() => onArticle(article)} />)}</div> : <p className="quiet-state">这个栏目正在同步，稍后会自动更新。</p>}
+    {sections.length > 0 && <div className="news-subsections" aria-label="新闻细分栏目">
+      <button className={`section-chip ${section === 'all' ? 'active' : ''}`} aria-pressed={section === 'all'} onClick={() => { setSection('all'); setVisibleCount(12) }}>全部细分 <span>{categoryStories.length}</span></button>
+      {(['world', 'cs2'] as const).filter((group) => category === 'all' || category === group).map((group) => <div className="news-subsection-row" role="group" aria-label={`${categoryName(group)}细分`} key={group}>
+        <span className="news-subsection-label">{categoryName(group)}</span>
+        <div>{sections.filter((item) => item.category === group).map((item) => <button key={item.id} className={`section-chip ${section === item.id ? 'active' : ''}`} aria-pressed={section === item.id} onClick={() => { setSection(item.id); setVisibleCount(12) }}>{item.label}<span>{categoryStories.filter((story) => story.section === item.id).length}</span></button>)}</div>
+      </div>)}
+      <p className="section-help">按标题与摘要自动归类；数量为当前已加载报道。</p>
+    </div>}
+    {loading ? <div className="news-skeleton" aria-label="正在加载报道" /> : ordered.length ? <div className="news-feed-grid">{ordered.slice(0, visibleCount).map((article) => <NewsCard article={article} key={article.id} variant="feed" onClick={() => onArticle(article)} />)}</div> : <p className="quiet-state">本栏目暂无已同步报道，可切换其他分类查看。</p>}
     {ordered.length > visibleCount && <button className="news-load-more" onClick={() => setVisibleCount((count) => count + 12)}>加载更多报道 <span>↓</span></button>}
   </section>
 }
@@ -79,7 +92,7 @@ function NewsCard({ article, onClick, variant }: { article: RankedArticle; onCli
     <button onClick={onClick} className="news-card-link">
       <StoryVisual key={`${article.id}:${article.imageUrl}`} article={article} eager={variant === 'lead'} />
       <div className="news-card-content">
-        <div className="news-card-topline"><span className={`news-category ${categoryClass}`}>{categoryName(article.category)}</span><HeatBadge article={article} /></div>
+        <div className="news-card-topline"><span className={`news-category ${categoryClass}`}>{categoryName(article.category)}{article.sectionLabel && <span className="news-card-section"> / {article.sectionLabel}</span>}</span><HeatBadge article={article} /></div>
         <h3>{titleOf(article)}</h3>
         {summary && <p className="news-card-summary">{shortSummary}</p>}
         <div className="news-card-meta"><span>{sourceName(article.source)}</span><time dateTime={article.publishedAt}>{publishedDate.format(new Date(article.publishedAt))}</time></div>

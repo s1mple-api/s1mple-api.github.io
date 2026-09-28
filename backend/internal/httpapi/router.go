@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/example/cs-pulse/backend/internal/config"
+	"github.com/example/cs-pulse/backend/internal/model"
 	"github.com/example/cs-pulse/backend/internal/repository"
 	"github.com/example/cs-pulse/backend/internal/service"
 	"github.com/gin-contrib/cors"
@@ -19,6 +20,7 @@ import (
 )
 
 var readerIDPattern = regexp.MustCompile(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$`)
+var communityKeyPattern = regexp.MustCompile(`^[a-f0-9]{24}$`)
 
 func NewRouter(repo *repository.Repository, syncer *service.SyncService, cfg config.Config) *gin.Engine {
 	r := gin.New()
@@ -50,6 +52,15 @@ func NewRouter(repo *repository.Repository, syncer *service.SyncService, cfg con
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
+		}
+		communityTopics := make(map[string][]service.CommunityTopic)
+		for _, source := range model.CommunitySources() {
+			rows, err := repo.LatestTrends(source, 30)
+			if err != nil {
+				c.JSON(500, gin.H{"error": err.Error()})
+				return
+			}
+			communityTopics[source] = service.CategorizeCommunity(rows)
 		}
 		matches, err := repo.RecentMatches([]string{"scheduled", "live"}, 8)
 		if err != nil {
@@ -87,7 +98,12 @@ func NewRouter(repo *repository.Repository, syncer *service.SyncService, cfg con
 			return
 		}
 		newsFeed := service.RankNews(allNews, append(baiduTrends[:len(baiduTrends):len(baiduTrends)], weiboTrends...), reads, time.Now().UTC())
-		c.JSON(http.StatusOK, gin.H{"articles": articles, "worldArticles": worldArticles, "newsFeed": newsFeed, "baiduTrends": baiduTrends, "weiboTrends": weiboTrends, "matches": matches, "events": events, "rankings": rankings, "valveRankings": valveRankings, "players": players, "sourceStatus": syncer.SourceStatus()})
+		c.JSON(http.StatusOK, gin.H{
+			"articles": articles, "worldArticles": worldArticles, "newsFeed": newsFeed, "newsSections": service.NewsSections(),
+			"baiduTrends": baiduTrends, "weiboTrends": weiboTrends,
+			"tiebaTopics": communityTopics["tieba"], "hupuTopics": communityTopics["hupu"], "communityTopics": communityTopics, "communitySections": service.CommunitySections(),
+			"matches": matches, "events": events, "rankings": rankings, "valveRankings": valveRankings, "players": players, "sourceStatus": syncer.SourceStatus(),
+		})
 	})
 	api.GET("/world-news", func(c *gin.Context) {
 		rows, err := repo.LatestWorldArticles(intQuery(c, "limit", 30))
@@ -106,6 +122,44 @@ func NewRouter(repo *repository.Repository, syncer *service.SyncService, cfg con
 		limit := intQuery(c, "limit", 20)
 		rows, err := repo.LatestArticles(limit)
 		respond(c, rows, err)
+	})
+	api.GET("/community", func(c *gin.Context) {
+		source := c.DefaultQuery("source", "tieba")
+		if !model.IsCommunitySource(source) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported community source"})
+			return
+		}
+		rows, err := repo.LatestTrends(source, intQuery(c, "limit", 30))
+		respond(c, service.CategorizeCommunity(rows), err)
+	})
+	api.GET("/community/topics/:key", func(c *gin.Context) {
+		key, page, ok := communityParams(c)
+		if !ok {
+			return
+		}
+		data, err := syncer.CommunityTopicPosts(key, page)
+		respondCommunity(c, data, err)
+	})
+	api.GET("/community/posts/:key", func(c *gin.Context) {
+		key, _, ok := communityParams(c)
+		if !ok {
+			return
+		}
+		data, err := syncer.CommunityPostDetails(key)
+		respondCommunity(c, data, err)
+	})
+	api.GET("/community/posts/:key/comments", func(c *gin.Context) {
+		key, page, ok := communityParams(c)
+		if !ok {
+			return
+		}
+		sort := c.DefaultQuery("sort", "hot")
+		if sort != "hot" && sort != "time" {
+			c.JSON(400, gin.H{"error": "sort must be hot or time"})
+			return
+		}
+		data, err := syncer.CommunityPostComments(key, page, sort)
+		respondCommunity(c, data, err)
 	})
 	api.GET("/articles/:id", func(c *gin.Context) {
 		id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -237,6 +291,28 @@ func eventLimitQuery(c *gin.Context) int {
 func respond(c *gin.Context, value any, err error) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, value)
+}
+
+func communityParams(c *gin.Context) (string, int, bool) {
+	key := c.Param("key")
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if !communityKeyPattern.MatchString(key) || err != nil || page < 1 || page > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid community key or page (1-100)"})
+		return "", 0, false
+	}
+	return key, page, true
+}
+
+func respondCommunity(c *gin.Context, value any, err error) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(404, gin.H{"error": "community content not found"})
+		return
+	}
+	if err != nil {
+		c.JSON(503, gin.H{"error": "community content is temporarily unavailable"})
 		return
 	}
 	c.JSON(http.StatusOK, value)

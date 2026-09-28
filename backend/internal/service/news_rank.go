@@ -20,9 +20,11 @@ type NewsHeat struct {
 
 type RankedArticle struct {
 	model.Article
-	Category  string   `json:"category"`
-	HeatScore float64  `json:"heatScore"`
-	Heat      NewsHeat `json:"heat"`
+	Category     string   `json:"category"`
+	Section      string   `json:"section"`
+	SectionLabel string   `json:"sectionLabel"`
+	HeatScore    float64  `json:"heatScore"`
+	Heat         NewsHeat `json:"heat"`
 }
 
 // RankNews is a site estimate, not an upstream audience measurement. Signals
@@ -41,6 +43,7 @@ func RankNews(articles []model.Article, trends []model.Trend, reads map[uint]int
 		if article.Source == "bbc" {
 			category = "world"
 		}
+		section := classifyContent(category, article.Title+" "+article.TitleZH, article.Summary+" "+article.SummaryZH)
 		ageHours := math.Max(0, now.Sub(article.PublishedAt).Hours())
 		freshness := 55 * math.Pow(.5, ageHours/24)
 		reading := 15 * (1 - math.Exp(-float64(reads[article.ID])/10)) * math.Pow(.5, ageHours/72)
@@ -68,8 +71,9 @@ func RankNews(articles []model.Article, trends []model.Trend, reads map[uint]int
 			}
 		}
 		ranked = append(ranked, RankedArticle{
-			Article: article, Category: category, HeatScore: roundHeat(freshness + topics + reading),
-			Heat: NewsHeat{Freshness: roundHeat(freshness), Topics: roundHeat(topics), Reading: roundHeat(reading), Reads: reads[article.ID], Matches: labels},
+			Article: article, Category: category, Section: section.ID, SectionLabel: section.Label,
+			HeatScore: roundHeat(freshness + topics + reading),
+			Heat:      NewsHeat{Freshness: roundHeat(freshness), Topics: roundHeat(topics), Reading: roundHeat(reading), Reads: reads[article.ID], Matches: labels},
 		})
 	}
 	sort.SliceStable(ranked, func(i, j int) bool {

@@ -32,6 +32,8 @@ type Trend struct {
 	Rank      int       `json:"rank" gorm:"index"`
 	Keyword   string    `json:"keyword" gorm:"size:255"`
 	Heat      int64     `json:"heat"`
+	HeatLabel string    `json:"heatLabel" gorm:"size:100"`
+	Summary   string    `json:"summary" gorm:"type:text"`
 	Tag       string    `json:"tag" gorm:"size:30"`
 	SourceURL string    `json:"sourceUrl" gorm:"type:text"`
 	FetchedAt time.Time `json:"fetchedAt"`

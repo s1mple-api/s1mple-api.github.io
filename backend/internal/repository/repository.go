@@ -20,10 +20,14 @@ func Open(dsn string) (*gorm.DB, error) {
 func New(db *gorm.DB) *Repository { return &Repository{db: db} }
 
 func (r *Repository) MigrateAndSeed() error {
-	if err := r.db.AutoMigrate(&model.Article{}, &model.ArticleRead{}, &model.Trend{}, &model.Team{}, &model.Player{}, &model.Event{}, &model.Match{}); err != nil {
+	if err := r.db.AutoMigrate(&model.Article{}, &model.ArticleRead{}, &model.Trend{}, &model.CommunityResource{}, &model.Team{}, &model.Player{}, &model.Event{}, &model.Match{}); err != nil {
 		return err
 	}
-	return nil
+	var topics []model.Trend
+	if err := r.db.Where("source IN ?", model.CommunitySources()).Find(&topics).Error; err != nil {
+		return err
+	}
+	return saveCommunityTopics(r.db, topics)
 }
 
 func (r *Repository) UpsertArticle(article model.Article) error {
@@ -198,6 +202,11 @@ func (r *Repository) ReplaceTrends(source string, rows []model.Trend) error {
 		return fmt.Errorf("%s trend list is empty", source)
 	}
 	return r.db.Transaction(func(tx *gorm.DB) error {
+		if model.IsCommunitySource(source) {
+			if err := saveCommunityTopics(tx, rows); err != nil {
+				return err
+			}
+		}
 		if err := tx.Where("source = ?", source).Delete(&model.Trend{}).Error; err != nil {
 			return err
 		}

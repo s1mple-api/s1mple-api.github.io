@@ -1,0 +1,148 @@
+.section-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid transparent; background: #f4f4f4; color: #555; font: inherit; font-size: 11px; cursor: pointer; }
+.section-chip span { color: #888; font-size: 10px; font-variant-numeric: tabular-nums; }
+.section-chip:hover { border-color: #aaa; }
+.section-chip.active { color: #a50000; border-color: #be4444; background: #fff8f7; }
+.section-chip.active span { color: #a50000; }
+.section-help { margin: 10px 0 0; font-size: 10px; color: #777; line-height: 1.7; }
+.news-subsections { padding: 12px 0 16px; border-bottom: 1px solid #ddd; }
+.news-subsection-row { display: flex; gap: 12px; align-items: baseline; margin-top: 10px; }
+.news-subsection-label { flex: 0 0 52px; color: #666; font-size: 10px; font-weight: 700; }
+.news-subsection-row > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.news-card-section { font-weight: 500; color: #777; }
+.community-intro { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 3px solid #222; padding: 25px 0; }
+.community-intro h2 { font-size: 28px; margin: 10px 0; letter-spacing: -.035em; }
+.community-intro p { font-size: 12px; line-height: 1.8; color: #777; margin: 0; }
+.community-cadence { flex: none; text-align: right; font-size: 12px; line-height: 1.9; color: #444; }
+.community-cadence small { font-size: 10px; color: #888; }
+.community-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 0; border-block: 1px solid #ddd; }
+.community-search { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #ccc; min-width: 220px; }
+.community-search > span { color: #888; font-size: 20px; }
+.community-search input { width: 100%; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 12px; }
+.community-section-filters { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
+.community-results { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.community-results > span { flex: none; color: #777; font-size: 11px; }
+.community-boards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 28px; }
+.community-boards-single { grid-template-columns: 1fr; }
+.community-boards > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+.community-board { border: 1px solid #ddd; border-top: 3px solid #436da3; padding: 22px 24px; min-width: 0; }
+.community-hupu { border-top-color: #b80000; }
+.community-bilibili { border-top-color: #1689b0; }
+.community-xiaohongshu { border-top-color: #e2445c; }
+.community-douyin { border-top-color: #292929; }
+.community-topic-open { width: 100%; display: flex; align-items: start; gap: 13px; border: 0; background: transparent; padding: 18px 0; text-align: left; font: inherit; cursor: pointer; }
+.community-topic-open:hover strong { color: #b80000; }
+.community-topic-copy > small { display: block; margin-top: 8px; color: #999; font-size: 9px; }
+.community-detail-page { max-width: 960px; margin: 0 auto; padding-block: 12px 40px; }
+.community-back { border: 0; background: none; padding: 10px 0; color: #666; font: inherit; font-size: 12px; cursor: pointer; }
+.community-back:hover { color: #b80000; }
+.community-detail-header { padding: 25px 0; border-bottom: 1px solid #ddd; margin-bottom: 25px; }
+.community-detail-header h1 { font-size: clamp(26px, 3vw, 40px); line-height: 1.4; margin: 14px 0; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.community-detail-header > p { color: #666; font-size: 14px; line-height: 1.9; white-space: pre-wrap; }
+.community-detail-meta { display: flex; flex-wrap: wrap; gap: 10px 20px; color: #888; font-size: 11px; line-height: 1.7; }
+.community-detail-meta a { margin-left: auto; color: #a60000; text-decoration: none; }
+.community-data-state { margin: 14px 0 22px; }
+.community-data-state > small { color: #999; font-size: 10px; }
+.community-post-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 25px; }
+.community-post-card { border-bottom: 1px solid #ddd; padding-bottom: 24px; }
+.community-post-card button { display: block; width: 100%; text-align: left; border: 0; padding: 0; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+.community-post-cover { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; margin-bottom: 14px; }
+.community-post-card small { color: #777; font-size: 10px; }
+.community-post-card h3 { font-size: 19px; line-height: 1.5; margin: 10px 0; }
+.community-post-card button:hover h3 { color: #b80000; }
+.community-post-card p { color: #777; font-size: 12px; line-height: 1.8; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.community-post-card span { display: block; color: #888; font-size: 10px; line-height: 1.8; }
+.community-post-card i { display: inline-block; color: #b80000; font-style: normal; margin-left: 14px; }
+.community-pagination { display: flex; justify-content: center; gap: 22px; align-items: center; margin-top: 30px; font-size: 12px; }
+.community-pagination button { padding: 10px 14px; border: 1px solid #ccc; background: #fff; font: inherit; cursor: pointer; }
+.community-pagination button:disabled { color: #aaa; cursor: default; }
+.community-author { display: flex; align-items: center; gap: 12px; margin: 22px 0 18px; }
+.community-avatar { width: 36px; height: 36px; flex: none; object-fit: cover; border-radius: 50%; }
+.community-author strong, .community-comment-heading strong { display: block; font-size: 13px; }
+.community-author span, .community-comment-heading span { display: block; margin-top: 5px; color: #999; font-size: 10px; }
+.community-video { width: 100%; aspect-ratio: 16 / 9; background: #222; margin-bottom: 32px; position: relative; }
+.community-video iframe { width: 100%; height: 100%; border: 0; }
+.community-video button { width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; position: relative; }
+.community-video-cover { width: 100%; height: 100%; object-fit: cover; opacity: .65; }
+.community-video button > span { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 18px; font-weight: 700; }
+.community-post-body, .community-comments { max-width: 780px; margin-inline: auto; }
+.community-post-body > h2, .community-comments > h2 { font-size: 22px; margin: 24px 0; }
+.community-rich-content p { font-size: 16px; line-height: 2; margin: 20px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.community-inline-image { display: block; max-width: 100%; max-height: 720px; height: auto; object-fit: contain; margin: 20px auto; }
+.community-image-unavailable { display: grid; place-items: center; min-height: 40px; color: #999; background: #f4f4f4; font-size: 10px; }
+.community-excerpt, .community-comment-quote { padding: 16px; background: #f7f7f7; border-left: 2px solid #ddd; margin: 15px 0; }
+.community-excerpt > small { color: #999; font-size: 11px; }
+.community-comments { border-top: 3px solid #222; margin-top: 45px; padding-top: 24px; }
+.community-comments-list { list-style: none; padding: 0; margin: 0; }
+.community-comments-list > li { border-bottom: 1px solid #ddd; padding: 22px 0; }
+.community-comment-heading { display: flex; align-items: center; gap: 10px; }
+.community-comment-heading > small { margin-left: auto; color: #999; font-size: 11px; }
+.community-comment .community-rich-content p { font-size: 13px; line-height: 1.9; margin: 12px 0; }
+.community-comment .community-inline-image { max-height: 250px; max-width: min(100%, 400px); margin-left: 0; }
+.community-comment-quote strong { color: #888; font-size: 11px; }
+.community-comment-replies { margin: 15px 0 0 24px; }
+.community-comment-replies > summary { color: #a60000; font-size: 11px; padding: 6px 0; cursor: pointer; }
+.community-comment-replies > article { margin-top: 16px; border-top: 1px solid #eee; padding-top: 15px; }
+.community-reply-count { display: block; color: #999; font-size: 10px; margin-top: 10px; }
+.community-board-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.community-board-heading h3 { font-size: 22px; margin: 0 0 6px; }
+.community-board-heading > div > span { font-size: 10px; color: #888; }
+.community-status { font-size: 10px; color: #4c7352; background: #eff5ef; padding: 5px 8px; white-space: nowrap; }
+.community-status.is-stale { color: #96622b; background: #fff5e5; }
+.community-updated { color: #777; font-size: 10px; margin: 15px 0; }
+.community-warning { padding: 12px; color: #88602d; background: #fff8ec; font-size: 11px; line-height: 1.7; }
+.community-topic-list { list-style: none; padding: 0; margin: 0; }
+.community-topic-list > li { border-top: 1px solid #e5e5e5; }
+.community-topic summary { display: flex; align-items: start; gap: 13px; cursor: pointer; padding: 18px 0; list-style: none; }
+.community-topic summary::-webkit-details-marker { display: none; }
+.community-rank { flex: 0 0 27px; font: 700 24px/1.2 Georgia, serif; color: #bbb; }
+.community-rank.top { color: #b80000; }
+.community-topic-copy { flex: 1; min-width: 0; }
+.community-topic-copy > strong { display: block; font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
+.community-topic summary:hover strong { color: #b80000; }
+.community-topic-meta { display: flex; flex-wrap: wrap; gap: 5px 14px; font-size: 10px; line-height: 1.5; margin-top: 9px; color: #888; }
+.community-topic-meta > span:first-child { color: #666; }
+.community-expand { color: #999; font-size: 16px; margin-top: 3px; }
+.community-topic[open] .community-expand { transform: rotate(45deg); }
+.community-topic-detail { margin: 0 0 18px 40px; padding: 16px; background: #f6f6f6; }
+.community-summary-label { color: #777; font-size: 10px; letter-spacing: .05em; }
+.community-topic-detail p { color: #444; font-size: 13px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; margin: 9px 0; }
+.community-topic-detail .community-detail-note { color: #888; font-size: 10px; }
+.community-topic-detail a { display: inline-block; color: #a60000; font-size: 12px; font-weight: 700; margin-top: 8px; text-decoration: none; }
+.community-topic-detail a:hover { text-decoration: underline; }
+.community-board-footer { display: flex; gap: 12px; justify-content: space-between; border-top: 1px solid #ddd; margin-top: 12px; padding-top: 17px; color: #888; font-size: 10px; }
+.community-board-footer a { color: #777; }
+.community-empty { padding: 40px 10px; text-align: center; }
+.community-empty strong { font-size: 15px; }
+.community-empty p { color: #888; font-size: 12px; line-height: 1.7; }
+.community-empty button { padding: 7px 12px; background: #fff; border: 1px solid #ccc; cursor: pointer; }
+.community-preview-source { margin-top: 18px; }
+.community-preview-source h3 { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; margin: 0 0 10px; }
+.community-preview-source h3 span { color: #999; font-size: 9px; font-weight: 400; }
+.community-preview-source ol { list-style: none; padding: 0; margin: 0; }
+.community-preview-source li { display: flex; align-items: baseline; gap: 9px; font-size: 12px; line-height: 1.65; padding: 9px 0; border-bottom: 1px solid #eee; overflow-wrap: anywhere; }
+.community-preview-source li > span { color: #b80000; font: 700 15px Georgia, serif; }
+.community-preview-source > p { color: #888; font-size: 11px; }
+@media (max-width: 760px) {
+  .community-boards { grid-template-columns: 1fr; }
+  .community-intro { align-items: start; }
+  .community-intro h2 { font-size: 24px; }
+  .community-cadence { font-size: 10px; }
+  .community-board { padding: 20px; }
+  .community-post-grid { grid-template-columns: 1fr; }
+  .community-detail-header h1 { font-size: 28px; }
+}
+@media (max-width: 480px) {
+  .community-intro { flex-direction: column; gap: 12px; }
+  .community-cadence { text-align: left; }
+  .community-toolbar { flex-direction: column; align-items: stretch; gap: 12px; }
+  .community-results { align-items: start; }
+  .community-results > span { margin-top: 10px; }
+  .community-board { padding: 18px 14px; }
+  .community-topic summary { gap: 9px; }
+  .community-topic-detail { margin-left: 0; }
+  .news-subsection-row { flex-direction: column; gap: 7px; }
+  .news-subsection-label { flex-basis: auto; }
+  .community-detail-meta a { margin-left: 0; }
+  .community-comment-replies { margin-left: 10px; }
+  .community-video button > span { font-size: 14px; }
+}

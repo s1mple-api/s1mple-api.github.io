@@ -4,21 +4,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/example/cs-pulse/backend/internal/model"
 )
 
 const (
-	baiduTrendsURL     = "https://top.baidu.com/board?tab=realtime"
-	weiboAggregatorURL = "https://uapis.cn/api/v1/misc/hotboard?type=weibo"
+	baiduTrendsURL = "https://top.baidu.com/board?tab=realtime"
+	hotboardURL    = "https://uapis.cn/api/v1/misc/hotboard"
 )
+
+var heatPattern = regexp.MustCompile(`(?i)([0-9]+(?:\.[0-9]+)?)\s*([亿万wk]?)`)
 
 type TrendCollector struct{ client *http.Client }
 
@@ -56,54 +60,96 @@ func (c *TrendCollector) FetchBaidu() ([]model.Trend, error) {
 }
 
 func (c *TrendCollector) FetchWeibo() ([]model.Trend, error) {
-	response, err := c.client.Get(weiboAggregatorURL)
+	return c.fetchHotboard("weibo")
+}
+
+func (c *TrendCollector) FetchCommunity(source string) ([]model.Trend, error) {
+	if !model.IsCommunitySource(source) {
+		return nil, fmt.Errorf("unsupported community source %q", source)
+	}
+	return c.fetchHotboard(source)
+}
+
+func (c *TrendCollector) fetchHotboard(source string) ([]model.Trend, error) {
+	response, err := c.client.Get(hotboardURL + "?type=" + url.QueryEscape(source))
 	if err != nil {
-		return nil, fmt.Errorf("weibo hot search aggregator: %w", err)
+		return nil, fmt.Errorf("%s hotboard aggregator: %w", source, err)
 	}
 	defer closeResponseBody(response.Body)
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("weibo hot search aggregator returned %s", response.Status)
+		return nil, fmt.Errorf("%s hotboard aggregator returned %s", source, response.Status)
+	}
+	rows, err := decodeHotboard(response.Body, source, time.Now().UTC())
+	if err != nil {
+		return nil, fmt.Errorf("%s hotboard aggregator: %w", source, err)
+	}
+	return rows, nil
+}
+
+func decodeHotboard(body io.Reader, source string, now time.Time) ([]model.Trend, error) {
+	hosts := map[string]string{"weibo": "s.weibo.com", "tieba": "tieba.baidu.com", "hupu": "bbs.hupu.com", "bilibili": "www.bilibili.com", "xiaohongshu": "www.xiaohongshu.com", "douyin": "www.douyin.com"}
+	host, supported := hosts[source]
+	if !supported {
+		return nil, fmt.Errorf("unsupported hotboard source %q", source)
 	}
 	var payload struct {
 		Type       string `json:"type"`
 		UpdateTime string `json:"update_time"`
 		List       []struct {
-			Index    int    `json:"index"`
-			Title    string `json:"title"`
-			URL      string `json:"url"`
-			HotValue string `json:"hot_value"`
+			Index    int             `json:"index"`
+			Title    string          `json:"title"`
+			URL      string          `json:"url"`
+			HotValue string          `json:"hot_value"`
+			Extra    json.RawMessage `json:"extra"`
 		} `json:"list"`
 	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(&payload); err != nil {
-		return nil, fmt.Errorf("decode weibo hot search aggregator: %w", err)
+	if err := json.NewDecoder(io.LimitReader(body, 2<<20)).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	if payload.Type != "weibo" {
-		return nil, fmt.Errorf("weibo hot search aggregator returned unexpected platform")
+	if payload.Type != source {
+		return nil, fmt.Errorf("unexpected platform")
 	}
 	updatedAt, err := time.Parse(time.RFC3339, payload.UpdateTime)
-	if err != nil || time.Since(updatedAt) > 2*time.Hour {
-		return nil, fmt.Errorf("weibo hot search aggregator has no recent update")
+	if err != nil || now.Sub(updatedAt) > 2*time.Hour || updatedAt.After(now.Add(5*time.Minute)) {
+		return nil, fmt.Errorf("no recent valid update time")
 	}
+	for i := range payload.List {
+		if payload.List[i].Index < 1 {
+			payload.List[i].Index = i + 1
+		}
+	}
+	sort.SliceStable(payload.List, func(i, j int) bool { return payload.List[i].Index < payload.List[j].Index })
 	rows := make([]model.Trend, 0, 30)
+	seen := make(map[string]bool)
 	for _, item := range payload.List {
 		absolute, err := url.Parse(strings.TrimSpace(item.URL))
-		if err != nil || absolute.Scheme != "https" || absolute.Hostname() != "s.weibo.com" || strings.TrimSpace(item.Title) == "" {
+		keyword := cleanText(item.Title)
+		if err != nil || absolute.Scheme != "https" || absolute.Host != host || absolute.User != nil || keyword == "" || len([]rune(keyword)) > 255 {
 			continue
 		}
-		rank := item.Index
-		if rank < 1 {
-			rank = len(rows) + 1
+		if seen[keyword] || seen[absolute.String()] {
+			continue
+		}
+		seen[keyword], seen[absolute.String()] = true, true
+		var extra struct {
+			Description string `json:"desc"`
+		}
+		if len(item.Extra) > 0 {
+			// Other platforms may use a different optional extra payload.
+			_ = json.Unmarshal(item.Extra, &extra)
 		}
 		rows = append(rows, model.Trend{
-			Source: "weibo", Provider: "uapis.cn", Rank: rank, Keyword: strings.TrimSpace(item.Title),
-			Heat: parseHeat(item.HotValue), SourceURL: absolute.String(), FetchedAt: updatedAt.UTC(),
+			Source: source, Provider: "uapis.cn", Rank: item.Index, Keyword: keyword,
+			Heat: parseHeat(item.HotValue), HeatLabel: truncateText(cleanText(item.HotValue), 100),
+			Summary:   truncateText(cleanText(extra.Description), 4000),
+			SourceURL: absolute.String(), FetchedAt: updatedAt.UTC(),
 		})
 		if len(rows) == 30 {
 			break
 		}
 	}
 	if len(rows) == 0 {
-		return nil, fmt.Errorf("weibo hot search page contained no ranking rows")
+		return nil, fmt.Errorf("response contained no valid ranking rows")
 	}
 	return rows, nil
 }
@@ -129,12 +175,32 @@ func (c *TrendCollector) getPage(pageURL string) (*goquery.Document, *url.URL, e
 }
 
 func parseHeat(value string) int64 {
-	digits := strings.Map(func(r rune) rune {
-		if unicode.IsDigit(r) {
-			return r
-		}
-		return -1
-	}, value)
-	result, _ := strconv.ParseInt(digits, 10, 64)
-	return result
+	parts := heatPattern.FindStringSubmatch(strings.ReplaceAll(value, ",", ""))
+	if len(parts) != 3 {
+		return 0
+	}
+	valueNumber, err := strconv.ParseFloat(parts[1], 64)
+	if err != nil {
+		return 0
+	}
+	switch strings.ToLower(parts[2]) {
+	case "亿":
+		valueNumber *= 100_000_000
+	case "万", "w":
+		valueNumber *= 10_000
+	case "k":
+		valueNumber *= 1_000
+	}
+	if valueNumber >= float64(math.MaxInt64) {
+		return math.MaxInt64
+	}
+	return int64(math.Round(valueNumber))
+}
+
+func truncateText(value string, limit int) string {
+	runes := []rune(value)
+	if len(runes) > limit {
+		return string(runes[:limit])
+	}
+	return value
 }

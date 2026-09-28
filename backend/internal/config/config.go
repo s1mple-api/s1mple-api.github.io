@@ -14,7 +14,7 @@ type Config struct {
 func Load() Config {
 	return Config{
 		Port:                env("APP_PORT", "8080"),
-		MySQLDSN:            env("MYSQL_DSN", "cs_pulse:cs_pulse_dev@tcp(127.0.0.1:3306)/cs_pulse?charset=utf8mb4&parseTime=True&loc=Local"),
+		MySQLDSN:            env("MYSQL_DSN", "cs_pulse:Taojunwei@2000!@tcp(127.0.0.1:3306)/cs_pulse?charset=utf8mb4&parseTime=True&loc=Local"),
 		CORSOrigin:          env("CORS_ORIGIN", "http://localhost:5173"),
 		CollectorUserAgent:  env("COLLECTOR_USER_AGENT", "CSPulseLearning/0.1 (local learning project)"),
 		EnableHLTVCollector: env("ENABLE_HLTV_COLLECTOR", "true") == "true",
